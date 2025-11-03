@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ปฏิทินวันเกิด</title>
+  <style>
+    :root{
+        --bg:#F5F5F5;
+        --card:#FFFFFF;
+        --muted:#333;
+        --accent:#3B6E3B;
+        --accent-2:#A2CFA2;
+        --radius:14px; 
+        font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Thai', 'Noto Sans', Arial;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);color:#222}
+    .layout{display:flex;flex-wrap:wrap;gap:20px;max-width:1200px;margin:40px auto;padding:20px}
+    aside.dashboard{flex:1 1 250px;max-width:260px;background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);height:fit-content}
+    .main{flex:3 1 650px;min-width:300px}
+
+    header{display:flex;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+    .logo{width:72px;height:72px;border-radius:14px;background:linear-gradient(180deg,var(--accent-2),var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:22px}
+    h1{margin:0;font-size:22px}
+    p.lead{margin:4px 0 0;color:var(--muted);font-size:15px}
+
+    .today-banner{margin-top:10px;background:var(--card);border-left:5px solid var(--accent);padding:10px 14px;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,0.08);font-size:15px}
+    .highlight{
+        color:var(--accent);
+        font-weight:600;
+    }
+
+    .grid-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-top:20px}
+    .month{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+    .month h3{margin:0 0 10px;font-size:16px;color:var(--accent)}
+    .weekday-row, .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .weekday{font-size:12px;color:var(--muted);text-align:center}
+    .day{height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:13px;color:#222;background:transparent;}
+    .day.empty{background:transparent}
+    .day.today{
+        outline:2px solid rgba(59,110,59,0.5);
+        background:rgba(59,110,59,0.12);
+    }
+    .birthday{
+        background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+        border: 1px solid rgba(255,140,0,0.3);
+        border-radius: 10px;
+        padding: 2px 6px;
+        margin: 2px 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: #E65100;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        display: inline-block;
+    }
+    .birthday .badge{font-weight:600;color:var(--accent);font-size:13px}
+
+    .person-info{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.05)}
+    .person-info:last-child{border-bottom:none}
+    .person-info .name{font-weight:600;color:var(--accent)}
+    .person-info .details{font-size:13px;color:var(--muted)}
+
+    @media print{body{background:white}.layout{box-shadow:none;margin:0;padding:8px}header,.today-banner{display:none}.month{page-break-inside:avoid}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="dashboard" id="dashboard">
+      <h2 style="margin-top:0;color:var(--accent);font-size:18px">สรุปวันเกิด</h2>
+      <div id="todayInfo" style="margin-bottom:12px;font-size:14px"></div>
+      <div id="birthInfo"></div>
+    </aside>
+
+    <div class="main">
+      <header>
+        <div class="logo">BD</div>
+        <div>
+          <h1>ปฏิทินวันเกิด</h1>
+          <p class="lead">ปฏิทินวันเกิดของครอบครัว พร้อมแดชบอร์ดด้านซ้าย</p>
+        </div>
+      </header>
+
+      <div class="today-banner" id="todayBanner"></div>
+      <div class="grid-months" id="months"></div>
+    </div>
+  </div>
+
+  <script>
+    const birthdays=[
+      {name:'ยาย',month:11,day:15,year:1955},
+      {name:'ตา',month:9,day:4,year:1952},
+      {name:'พ่อ',month:4,day:30,year:1976},
+      {name:'แม่',month:1,day:6,year:1980},
+      {name:'ผม',month:10,day:13,year:2005}
+    ];
+
+    const monthNames=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const weekdayShort=['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+    const container=document.getElementById('months');
+    const today=new Date();
+
+    function calcAge(y,m,d){const now=new Date();let age=now.getFullYear()-y;const mm=now.getMonth()+1-m;if(mm<0||(mm===0&&now.getDate()<d))age--;return age;}
+    function daysUntilNext(m,d){const now=new Date();let next=new Date(now.getFullYear(),m-1,d);if(next<now)next.setFullYear(now.getFullYear()+1);return Math.ceil((next-now)/(1000*60*60*24));}
+
+    function renderDashboard(){
+      const todayInfo=document.getElementById('todayInfo');
+      const birthInfo=document.getElementById('birthInfo');
+      todayInfo.innerHTML=`วันนี้วันที่ <span class='highlight'>${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}</span>`;
+      const list=birthdays.map(b=>({name:b.name,age:calcAge(b.year,b.month,b.day),daysLeft:daysUntilNext(b.month,b.day),date:`${b.day}/${b.month}`}));
+      list.sort((a,b)=>a.daysLeft-b.daysLeft);
+      birthInfo.innerHTML=list.map(p=>`<div class='person-info'><div class='name'>${p.name}</div><div class='details'>${p.date} — อายุ ${p.age} ปี (อีก ${p.daysLeft} วัน)</div></div>`).join('');
+      const next=list[0];
+      document.getElementById('todayBanner').innerHTML=`เหลืออีก <span class='highlight'>${next.daysLeft}</span> วัน จะถึงวันเกิดของ <span class='highlight'>${next.name}</span>`;
+    }
+
+    function getAdjustedDay(month, day) {
+    if (month === 2 && day === 29) {
+        const year = today.getFullYear();
+        if (!((year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0))) {
+        return 28;
+        }
+    }
+    return day;
+    }
+
+    function renderCalendar(){
+    for(let m=1;m<=12;m++){
+        const monthCard=document.createElement('div');monthCard.className='month';
+        const title=document.createElement('h3');title.textContent=monthNames[m-1];monthCard.appendChild(title);
+
+        const weekdays=document.createElement('div');weekdays.className='weekday-row';
+        weekdayShort.forEach(w=>{const d=document.createElement('div');d.className='weekday';d.textContent=w;weekdays.appendChild(d)});
+        monthCard.appendChild(weekdays);
+
+        const daysGrid=document.createElement('div');daysGrid.className='days';
+        const first=new Date(today.getFullYear(),m-1,1).getDay();
+        const daysInMonth=new Date(today.getFullYear(),m,0).getDate();
+        for(let i=0;i<first;i++){const e=document.createElement('div');e.className='day empty';daysGrid.appendChild(e)}
+
+        for(let d=1;d<=daysInMonth;d++){
+        const dd=document.createElement('div');dd.className='day';
+        const hits=birthdays.filter(b=>{
+            const adjDay = getAdjustedDay(b.month, b.day);
+            return b.month===m && adjDay===d;
+        });
+        if(hits.length){
+            hits.forEach(h=>{
+            const wrap=document.createElement('div');wrap.className='birthday';
+            const nm=document.createElement('div');nm.className='badge';nm.textContent=h.name;
+            wrap.appendChild(nm);
+            dd.appendChild(wrap);
+            });
+        } else {dd.textContent=d;}
+        if(today.getMonth()+1===m&&today.getDate()===d){dd.classList.add('today');}
+        daysGrid.appendChild(dd);
+        }
+        monthCard.appendChild(daysGrid);
+        container.appendChild(monthCard);
+    }
+    }
+
+    renderDashboard();
+    renderCalendar();
+  </script>
+</body>
+</html>
